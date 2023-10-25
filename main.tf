@@ -53,52 +53,42 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "firewall_policy" {
   custom_block_response_body        = "PGh0bWw+PGhlYWRlcj48dGl0bGU+NDAzIC0gRm9yYmlkZGVuOiBBY2Nlc3MgaXMgZGVuaWVkPC90aXRsZT48L2hlYWRlcj48Ym9keT48aDE+Rm9yYmlkZGVuPC9oMT48cD5Zb3UgZG9uJ3QgaGF2ZSBwZXJtaXNzaW9uIHRvIGFjY2VzcyB0aGlzIHJlc291cmNlLjwvcD48L2JvZHk+PC9odG1sPg=="
 
   custom_rule {
-    name                           = "RateLimitExcessiveRequests"
-    enabled                        = true
-    type                           = "RateLimitRule"
-    priority                       = 1000
-    rate_limit_threshold           = 3600
-    rate_limit_duration_in_minutes = 5
-    action                         = "Block"
+      name                           = "RateLimitExcessiveRequests"
+      enabled                        = true
+      type                           = "RateLimitRule"
+      priority                       = 1000
+      rate_limit_threshold           = 3600
+      rate_limit_duration_in_minutes = 5
+      action                         = "Block"
 
-    match_condition {
-      match_variable = "SocketAddr"
-      operator       = "IPMatch"
-      match_values   = ["0.0.0.0/0"]
+      match_condition {
+        match_variable     = "SocketAddr"
+        operator           = "IPMatch"
+        match_values       = ["0.0.0.0/0"]
+      }
     }
-  }
 
   custom_rule {
-    name                           = "ShortUserAgents"
-    enabled                        = true
-    type                           = "MatchRule"
-    priority                       = 500
-    rate_limit_threshold           = 1
-    rate_limit_duration_in_minutes = 5
-    action                         = "Block"
+      name                           = "ShortUserAgents"
+      enabled                        = true
+      type                           = "MatchRule"
+      priority                       = 500
+      rate_limit_threshold           = 1
+      rate_limit_duration_in_minutes = 5
+      action                         = "Block"
 
-    match_condition {
-      match_variable = "RequestHeader"
-      selector       = "User-Agent"
-      operator       = "LessThanOrEqual"
-      match_values   = ["15"]
+      match_condition {
+          match_variable     = "RequestHeader"
+          selector           = "User-Agent"
+          operator           = "LessThanOrEqual"
+          match_values       = ["15"]
+      }
     }
-  }
 
   managed_rule {
     type    = "DefaultRuleSet"
     version = "preview-0.1"
     action  = "Block"
-
-    override {
-      rule_group_name = "PHP"
-
-      rule {
-        rule_id = "933111"
-        enabled = false
-        action  = "Block"
-      }
-    }
   }
 
   managed_rule {
@@ -111,99 +101,6 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "firewall_policy" {
 resource "azurerm_cdn_frontdoor_rule_set" "test" {
   name                     = "XXXXXruleset"
   cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.profile.id
-}
-
-# resource "azurerm_cdn_frontdoor_rule" "test" {
-#   depends_on = [azurerm_cdn_frontdoor_origin_group.origin_group,
-#                 azurerm_cdn_frontdoor_origin.origin]
-
-#   name                      = "repro18249"
-#   cdn_frontdoor_rule_set_id = azurerm_cdn_frontdoor_rule_set.test.id
-#   order                     = 1
-#   behavior_on_match         = "Continue"
-
-#   actions {
-#     route_configuration_override_action {
-#       cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.origin_group.id
-#       forwarding_protocol           = "HttpsOnly"
-#       query_string_caching_behavior = "IncludeSpecifiedQueryStrings"
-#       query_string_parameters       = ["foo", "clientIp={client_ip}"]
-#       compression_enabled           = true
-#       cache_behavior                = "OverrideIfOriginMissing"
-#       cache_duration                = "365.23:59:59"
-#     }
-
-#     # Repro for #18249
-#     url_redirect_action {
-#       redirect_type        = "PermanentRedirect"
-#       redirect_protocol    = "Https"
-#       destination_hostname = ""
-#     }
-#   }
-
-#   conditions {
-#     request_scheme_condition {
-#       match_values = ["HTTP"]
-#       negate_condition = false
-#       operator = "Equal"
-#     }
-
-#     host_name_condition {
-#       operator         = "Equal"
-#       negate_condition = false
-#       match_values     = ["www.wodans-son.com", "images.wodans-son.com", "video.wodans-son.com"]
-#       transforms       = ["Lowercase", "Trim"]
-#     }
-
-#     is_device_condition {
-#       operator         = "Equal"
-#       negate_condition = false
-#       match_values     = ["Mobile"]
-#     }
-
-#     post_args_condition {
-#       post_args_name = "customerName"
-#       operator       = "BeginsWith"
-#       match_values   = ["J", "K"]
-#       transforms     = ["Uppercase"]
-#     }
-
-#     url_filename_condition {
-#       operator         = "Equal"
-#       negate_condition = false
-#       match_values     = ["media.mp4"]
-#       transforms       = ["Lowercase", "RemoveNulls", "Trim"]
-#     }
-#   }
-# }
-
-resource "azurerm_cdn_frontdoor_rule" "test" {
-  depends_on = [azurerm_cdn_frontdoor_origin_group.origin_group,
-                azurerm_cdn_frontdoor_origin.origin]
-
-  name                      = "repro20652"
-  cdn_frontdoor_rule_set_id = azurerm_cdn_frontdoor_rule_set.test.id
-  order                     = 1
-
-  actions {
-    url_rewrite_action {
-      destination             = "/static_content"
-      preserve_unmatched_path = true
-      source_pattern          = "/"
-    }
-  }
-
-  conditions {
-    url_path_condition {
-      match_values = ["static/"]
-      operator     = "BeginsWith"
-    }
-    url_path_condition {
-      match_values     = ["static/homepage/"]
-      negate_condition = true
-      operator         = "BeginsWith"
-    }
-  }
 }
 
 resource "azurerm_cdn_frontdoor_security_policy" "test" {
